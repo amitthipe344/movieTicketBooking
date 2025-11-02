@@ -34,27 +34,27 @@ public class BookingService {
     }
 
     // attempt booking with retry on optimistic lock
-    public Booking book(Long userId, BookingRequest req){
+    public Booking book(Long userId, BookingRequest req) {
         int attempts = 0;
-        while (true){
+        while (true) {
             try {
                 return attemptBooking(userId, req);
-            } catch (OptimisticLockException e){
+            } catch (OptimisticLockException e) {
                 attempts++;
-                if (attempts>3) throw new RuntimeException("Concurrent booking failure, please try again");
+                if (attempts > 3) throw new RuntimeException("Concurrent booking failure, please try again");
             }
         }
     }
 
     @Transactional
-    protected Booking attemptBooking(Long userId, BookingRequest req){
+    protected Booking attemptBooking(Long userId, BookingRequest req) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Show show = showRepository.findById(req.getShowId()).orElseThrow(() -> new RuntimeException("Show not found"));
 
         // load seats
         List<String> seatNumbers = req.getSeats();
         List<Seat> seats = new ArrayList<>();
-        for (String s : seatNumbers){
+        for (String s : seatNumbers) {
             Seat seat = seatRepository.findByShowIdAndSeatNumber(req.getShowId(), s)
                     .orElseThrow(() -> new RuntimeException("Seat not found: " + s));
             if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
@@ -64,29 +64,13 @@ public class BookingService {
         }
 
         // mark booked
-        for (Seat seat : seats){
+        for (Seat seat : seats) {
             seat.setStatus(Seat.SeatStatus.BOOKED);
             seatRepository.save(seat); // will trigger optimistic lock check via @Version
         }
 
         double total = seats.size() * show.getPrice();
         String applied = null;
-        if (req.getPromoCode() != null && !req.getPromoCode().isBlank()){
-            var p = promoService.findByCode(req.getPromoCode()).orElseThrow(() -> new RuntimeException("Invalid promo code"));
-            if (!promoService.isValid(p)) throw new RuntimeException("Promo invalid/expired");
-
-            boolean eligible = isEligible(user);
-            if (!eligible) throw new RuntimeException("User not eligible for promo");
-
-            if ("FREE_SEAT".equalsIgnoreCase(p.getType())){
-                // free seat: subtract one seat price (effectively make one of seats free)
-                total = Math.max(0, total - show.getPrice());
-                applied = p.getCode();
-            } else if ("FLAT_250".equalsIgnoreCase(p.getType())){
-                total = Math.max(0, total - 250);
-                applied = p.getCode();
-            }
-        }
 
         Booking b = Booking.builder()
                 .user(user)
@@ -99,25 +83,57 @@ public class BookingService {
 
         Booking saved = bookingRepository.save(b);
 
+        user.setTotalSpent(user.getTotalSpent() + total);
+        userRepository.save(user);
+
+        if (req.getPromoCode() != null && !req.getPromoCode().isBlank()) {
+            var p = promoService.findByCode(req.getPromoCode()).orElseThrow(() -> new RuntimeException("Invalid promo code"));
+            if (!promoService.isValid(p)) throw new RuntimeException("Promo invalid/expired");
+
+
+            boolean eligible = isEligible(user);
+            if (!eligible) throw new RuntimeException("User not eligible for promo");
+
+            if ("FREE_SEAT".equalsIgnoreCase(p.getType())) {
+                // free seat: subtract one seat price (effectively make one of seats free)
+                total = Math.max(0, total - show.getPrice());
+                applied = p.getCode();
+            } else if ("FLAT_250".equalsIgnoreCase(p.getType())) {
+                total = Math.max(0, total - 250);
+                applied = p.getCode();
+            }
+        }
+
+        Booking a = Booking.builder()
+                .user(user)
+                .show(show)
+                .seatNumbers(seatNumbers)
+                .createdAt(LocalDateTime.now())
+                .totalPrice(total)
+                .promoCodeApplied(applied)
+                .build();
+
+        Booking savedD = bookingRepository.save(a);
+
         // update user spent
         user.setTotalSpent(user.getTotalSpent() + total);
         userRepository.save(user);
 
-        return saved;
+        return savedD;
     }
 
-    public boolean isEligible(User user){
-        long bookings = bookingRepository.countByUserId(user.getId());
-        if (bookings > 5) return true;
+    public boolean isEligible(User user) {
+        Long seatsBooked = bookingRepository.countSeatsByUserId(user.getId());
+        if (seatsBooked != null && seatsBooked > 5) return true;
         if (user.getTotalSpent() > 1500) return true;
         return false;
     }
 
-    public List<Booking> getUserBookings(Long userId){
+    public List<Booking> getUserBookings(Long userId) {
         return bookingRepository.findByUserId(userId);
     }
 
-    public List<Booking> getAllBookings(){
+    public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
 }
