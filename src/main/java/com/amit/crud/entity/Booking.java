@@ -17,7 +17,7 @@ import java.util.List;
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private  Long id;
+    private Long id;
     @ManyToOne
     private User user;
     @ManyToOne

@@ -17,19 +17,19 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest req){
+    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
         authService.register(req, false);
         return ResponseEntity.ok("User registered");
     }
 
     @PostMapping("/register-admin")
-    public ResponseEntity<?> registerAdmin(@RequestBody RegisterRequest req){
+    public ResponseEntity<?> registerAdmin(@RequestBody RegisterRequest req) {
         authService.register(req, true);
         return ResponseEntity.ok("Admin registered");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req){
+    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.login(req));
     }
 }

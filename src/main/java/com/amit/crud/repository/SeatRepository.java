@@ -11,10 +11,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SeatRepository extends JpaRepository<Seat,Long> {
+public interface SeatRepository extends JpaRepository<Seat, Long> {
     List<Seat> findByShowId(Long id);
-    Optional<Seat> findByShowIdAndSeatNumber(Long showId,String seatNumber);
+
+    Optional<Seat> findByShowIdAndSeatNumber(Long showId, String seatNumber);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Seat s where s.show.id = :showId and s.seatNumber in :numbers")
-    List<Seat> lockSeats(Long showId,List<String> numbers);
+    List<Seat> lockSeats(Long showId, List<String> numbers);
 }

@@ -1,7 +1,7 @@
 package com.amit.crud.controller;
 
 
-
+import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Movie;
 import com.amit.crud.entity.Show;
 import com.amit.crud.service.MovieService;
@@ -24,21 +24,33 @@ public class AdminController {
     }
 
     @PostMapping("/movies")
-    public Movie addMovie(@RequestBody Movie m){ return movieService.addMovie(m); }
+    public Movie addMovie(@RequestBody Movie m) {
+        return movieService.addMovie(m);
+    }
 
-    @PutMapping("/movies")
-    public Movie updateMovie(@RequestBody Movie m){ return movieService.updateMovie(m); }
+    @PutMapping("/movies/{id}")
+    public Movie updateMovie(@PathVariable Long id, @RequestBody Movie m) {
+        return movieService.updateMovie(id,m);
+    }
 
     @DeleteMapping("/movies/{id}")
-    public void deleteMovie(@PathVariable Long id){ movieService.deleteMovie(id); }
+    public void deleteMovie(@PathVariable Long id) {
+        movieService.deleteMovie(id);
+    }
 
     @PostMapping("/shows")
-    public Show addShow(@RequestBody Show s){ return movieService.addShow(s); }
+    public Show addShow(@RequestBody Show s) {
+        return movieService.addShow(s);
+    }
 
     @DeleteMapping("/shows/{id}")
-    public void deleteShow(@PathVariable Long id){ movieService.deleteShow(id); }
+    public void deleteShow(@PathVariable Long id) {
+        movieService.deleteShow(id);
+    }
 
     @GetMapping("/bookings")
-    public List<?> viewAllBookings(){ return bookingService.getAllBookings(); }
+    public List<Booking> viewAllBookings() {
+        return bookingService.getAllBookings();
+    }
 }
 

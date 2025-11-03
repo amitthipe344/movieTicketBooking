@@ -5,6 +5,8 @@ import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Seat;
 import com.amit.crud.entity.Show;
 import com.amit.crud.entity.User;
+import com.amit.crud.exception.BadRequestException;
+import com.amit.crud.exception.NotFoundException;
 import com.amit.crud.repository.BookingRepository;
 import com.amit.crud.repository.SeatRepository;
 import com.amit.crud.repository.ShowRepository;
@@ -41,24 +43,28 @@ public class BookingService {
                 return attemptBooking(userId, req);
             } catch (OptimisticLockException e) {
                 attempts++;
-                if (attempts > 3) throw new RuntimeException("Concurrent booking failure, please try again");
+                if (attempts > 3)
+                    throw new BadRequestException("Concurrent booking failure, please try again");
             }
         }
     }
 
     @Transactional
     protected Booking attemptBooking(Long userId, BookingRequest req) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        Show show = showRepository.findById(req.getShowId()).orElseThrow(() -> new RuntimeException("Show not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found with id: " + userId));
+        Show show = showRepository.findById(req.getShowId()).orElseThrow(() -> new NotFoundException("Show not found with id: " + req.getShowId()));
 
         // load seats
         List<String> seatNumbers = req.getSeats();
+        if (seatNumbers == null || seatNumbers.isEmpty()) {
+            throw new BadRequestException("At least one seat must be selected");
+        }
         List<Seat> seats = new ArrayList<>();
         for (String s : seatNumbers) {
             Seat seat = seatRepository.findByShowIdAndSeatNumber(req.getShowId(), s)
-                    .orElseThrow(() -> new RuntimeException("Seat not found: " + s));
+                    .orElseThrow(() -> new NotFoundException("Seat not found: " + s));
             if (seat.getStatus() != Seat.SeatStatus.AVAILABLE) {
-                throw new RuntimeException("Seat not available: " + s);
+                throw new BadRequestException("Seat not available: " + s);
             }
             seats.add(seat);
         }
@@ -87,12 +93,15 @@ public class BookingService {
         userRepository.save(user);
 
         if (req.getPromoCode() != null && !req.getPromoCode().isBlank()) {
-            var p = promoService.findByCode(req.getPromoCode()).orElseThrow(() -> new RuntimeException("Invalid promo code"));
+            var p = promoService.findByCode(req.getPromoCode()).orElseThrow(() -> new BadRequestException("Invalid promo code"));
             if (!promoService.isValid(p)) throw new RuntimeException("Promo invalid/expired");
 
 
             boolean eligible = isEligible(user);
-            if (!eligible) throw new RuntimeException("User not eligible for promo");
+            if (!eligible) {
+                new BadRequestException("User not eligible for promo");
+                ;
+            }
 
             if ("FREE_SEAT".equalsIgnoreCase(p.getType())) {
                 // free seat: subtract one seat price (effectively make one of seats free)
@@ -130,6 +139,9 @@ public class BookingService {
     }
 
     public List<Booking> getUserBookings(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found with id: " + userId);
+        }
         return bookingRepository.findByUserId(userId);
     }
 

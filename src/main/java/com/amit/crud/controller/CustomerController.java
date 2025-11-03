@@ -31,13 +31,17 @@ public class CustomerController {
     }
 
     @GetMapping("/movies")
-    public List<Movie> listMovies(){ return movieService.getAll(); }
+    public List<Movie> listMovies() {
+        return movieService.getAll();
+    }
 
     @GetMapping("/movies/{movieId}/shows")
-    public List<Show> listShows(@PathVariable Long movieId){ return movieService.getShowsByMovie(movieId); }
+    public List<Show> listShows(@PathVariable Long movieId) {
+        return movieService.getShowsByMovie(movieId);
+    }
 
     @PostMapping("/bookings")
-    public BookingResponse book(@RequestBody BookingRequest req, Authentication auth){
+    public BookingResponse book(@RequestBody BookingRequest req, Authentication auth) {
         var username = auth.getName();
         User user = userRepository.findByUsername(username).orElseThrow();
         Booking b = bookingService.book(user.getId(), req);
@@ -50,7 +54,7 @@ public class CustomerController {
     }
 
     @GetMapping("/bookings")
-    public List<Booking> myBookings(Authentication auth){
+    public List<Booking> myBookings(Authentication auth) {
         var username = auth.getName();
         User user = userRepository.findByUsername(username).orElseThrow();
         return bookingService.getUserBookings(user.getId());

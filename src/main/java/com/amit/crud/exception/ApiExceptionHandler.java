@@ -12,17 +12,24 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<?> handleRuntime(RuntimeException ex){
-        Map<String,Object> m = new HashMap<>();
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<?> handleNotFound(NotFoundException ex) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(m);
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<?> handleBadRequest(BadRequestException ex) {
+        Map<String, Object> m = new HashMap<>();
         m.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(m);
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<?> handleNotFound(NotFoundException ex){
-        Map<String,Object> m = new HashMap<>();
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<?> handleRuntime(RuntimeException ex) {
+        Map<String, Object> m = new HashMap<>();
         m.put("error", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(m);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(m);
     }
 }
