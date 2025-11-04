@@ -51,14 +51,17 @@ public class BookingService {
 
     @Transactional
     protected Booking attemptBooking(Long userId, BookingRequest req) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found with id: " + userId));
-        Show show = showRepository.findById(req.getShowId()).orElseThrow(() -> new NotFoundException("Show not found with id: " + req.getShowId()));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + userId));
+        Show show = showRepository.findById(req.getShowId())
+                .orElseThrow(() -> new NotFoundException("Show not found with id: " + req.getShowId()));
 
         // load seats
         List<String> seatNumbers = req.getSeats();
         if (seatNumbers == null || seatNumbers.isEmpty()) {
             throw new BadRequestException("At least one seat must be selected");
         }
+
         List<Seat> seats = new ArrayList<>();
         for (String s : seatNumbers) {
             Seat seat = seatRepository.findByShowIdAndSeatNumber(req.getShowId(), s)
@@ -69,51 +72,40 @@ public class BookingService {
             seats.add(seat);
         }
 
-        // mark booked
-        for (Seat seat : seats) {
-            seat.setStatus(Seat.SeatStatus.BOOKED);
-            seatRepository.save(seat); // will trigger optimistic lock check via @Version
-        }
-
         double total = seats.size() * show.getPrice();
         String applied = null;
 
-        Booking b = Booking.builder()
-                .user(user)
-                .show(show)
-                .seatNumbers(seatNumbers)
-                .createdAt(LocalDateTime.now())
-                .totalPrice(total)
-                .promoCodeApplied(applied)
-                .build();
-
-        Booking saved = bookingRepository.save(b);
-
-        user.setTotalSpent(user.getTotalSpent() + total);
-        userRepository.save(user);
-
+        // ---- Promo Code Handling (only if provided) ----
         if (req.getPromoCode() != null && !req.getPromoCode().isBlank()) {
-            var p = promoService.findByCode(req.getPromoCode()).orElseThrow(() -> new BadRequestException("Invalid promo code"));
-            if (!promoService.isValid(p)) throw new RuntimeException("Promo invalid/expired");
+            var promo = promoService.findByCode(req.getPromoCode())
+                    .orElseThrow(() -> new BadRequestException("Invalid promo code"));
 
-
-            boolean eligible = isEligible(user);
-            if (!eligible) {
-                new BadRequestException("User not eligible for promo");
-                ;
+            if (!promoService.isValid(promo)) {
+                throw new BadRequestException("Promo invalid/expired");
             }
 
-            if ("FREE_SEAT".equalsIgnoreCase(p.getType())) {
-                // free seat: subtract one seat price (effectively make one of seats free)
+            // eligibility check: current booking >5 seats OR current total >1500
+            if (!(seats.size() > 5 || total > 1500)) {
+                throw new BadRequestException("User not eligible for promo");
+            }
+
+            // apply promo
+            if ("FREE_SEAT".equalsIgnoreCase(promo.getType())) {
                 total = Math.max(0, total - show.getPrice());
-                applied = p.getCode();
-            } else if ("FLAT_250".equalsIgnoreCase(p.getType())) {
+                applied = promo.getCode();
+            } else if ("FLAT_250".equalsIgnoreCase(promo.getType())) {
                 total = Math.max(0, total - 250);
-                applied = p.getCode();
+                applied = promo.getCode();
             }
         }
 
-        Booking a = Booking.builder()
+        // mark booked
+        for (Seat seat : seats) {
+            seat.setStatus(Seat.SeatStatus.BOOKED);
+            seatRepository.save(seat);
+        }
+
+        Booking booking = Booking.builder()
                 .user(user)
                 .show(show)
                 .seatNumbers(seatNumbers)
@@ -122,20 +114,12 @@ public class BookingService {
                 .promoCodeApplied(applied)
                 .build();
 
-        Booking savedD = bookingRepository.save(a);
+        Booking saved = bookingRepository.save(booking);
 
-        // update user spent
         user.setTotalSpent(user.getTotalSpent() + total);
         userRepository.save(user);
 
-        return savedD;
-    }
-
-    public boolean isEligible(User user) {
-        Long seatsBooked = bookingRepository.countSeatsByUserId(user.getId());
-        if (seatsBooked != null && seatsBooked > 5) return true;
-        if (user.getTotalSpent() > 1500) return true;
-        return false;
+        return saved;
     }
 
     public List<Booking> getUserBookings(Long userId) {

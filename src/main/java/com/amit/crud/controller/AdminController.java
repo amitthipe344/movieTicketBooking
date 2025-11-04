@@ -1,6 +1,7 @@
 package com.amit.crud.controller;
 
 
+import com.amit.crud.dto.MovieSetupRequest;
 import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Movie;
 import com.amit.crud.entity.Show;
@@ -22,6 +23,10 @@ public class AdminController {
         this.movieService = movieService;
         this.bookingService = bookingService;
     }
+    @PostMapping("/movie-setup")
+    public Movie createMovieSetup(@RequestBody MovieSetupRequest req) {
+        return movieService.createMovieWithShowsAndSeats(req);
+    }
 
     @PostMapping("/movies")
     public Movie addMovie(@RequestBody Movie m) {
@@ -41,6 +46,10 @@ public class AdminController {
     @PostMapping("/shows")
     public Show addShow(@RequestBody Show s) {
         return movieService.addShow(s);
+    }
+    @GetMapping("/movies")
+    public List<Movie> listMovies() {
+        return movieService.getAll();
     }
 
     @DeleteMapping("/shows/{id}")

@@ -1,11 +1,15 @@
 package com.amit.crud.service;
 
+import com.amit.crud.dto.MovieSetupRequest;
 import com.amit.crud.entity.Movie;
+import com.amit.crud.entity.Seat;
 import com.amit.crud.entity.Show;
 import com.amit.crud.exception.BadRequestException;
 import com.amit.crud.exception.NotFoundException;
 import com.amit.crud.repository.MovieRepository;
+import com.amit.crud.repository.SeatRepository;
 import com.amit.crud.repository.ShowRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,10 +18,44 @@ import java.util.List;
 public class MovieService {
     private final MovieRepository movieRepository;
     private final ShowRepository showRepository;
+    private final SeatRepository seatRepository;
 
-    public MovieService(MovieRepository movieRepository, ShowRepository showRepository) {
+    public MovieService(MovieRepository movieRepository, ShowRepository showRepository, SeatRepository seatRepository) {
         this.movieRepository = movieRepository;
         this.showRepository = showRepository;
+        this.seatRepository = seatRepository;
+    }
+
+    @Transactional
+    public Movie createMovieWithShowsAndSeats(MovieSetupRequest req) {
+        // 1. Create movie
+        Movie movie = Movie.builder()
+                .title(req.getTitle())
+                .description(req.getDescription())
+                .build();
+        movie = movieRepository.save(movie);
+
+        // 2. Create shows
+        for (MovieSetupRequest.ShowRequest showReq : req.getShows()) {
+            Show show = Show.builder()
+                    .movie(movie)
+                    .startTime(showReq.getStartTime())
+                    .price(showReq.getPrice())
+                    .build();
+            show = showRepository.save(show);
+
+            // 3. Create seats for each show
+            for (String seatNumber : showReq.getSeatNumbers()) {
+                Seat seat = Seat.builder()
+                        .seatNumber(seatNumber)
+                        .show(show)
+                        .status(Seat.SeatStatus.AVAILABLE)
+                        .build();
+                seatRepository.save(seat);
+            }
+        }
+
+        return movie;
     }
 
     public Movie addMovie(Movie m) {
@@ -29,7 +67,11 @@ public class MovieService {
 
     public Movie updateMovie(Long id, Movie m) {
         return movieRepository.findById(id)
-                .map(existing -> movieRepository.save(m))
+                .map(existing -> {
+                    existing.setTitle(m.getTitle());
+                    existing.setDescription(m.getDescription());
+                    return movieRepository.save(existing);
+                })
                 .orElseThrow(() -> new NotFoundException("Movie not found with id: " + m.getId()));
     }
 
@@ -37,6 +79,12 @@ public class MovieService {
         if (!movieRepository.existsById(id)) {
             throw new NotFoundException("Movie not found with id: " + id);
         }
+        List<Show> shows = showRepository.findByMovieId(id);
+        for (Show show : shows) {
+            seatRepository.deleteAll(seatRepository.findByShowId(show.getId()));
+            showRepository.delete(show);
+        }
+
         movieRepository.deleteById(id);
     }
 

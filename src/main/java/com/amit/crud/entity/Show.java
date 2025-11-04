@@ -18,7 +18,7 @@ public class Show {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Movie movie;
     private LocalDateTime startTime;
     private double price;
