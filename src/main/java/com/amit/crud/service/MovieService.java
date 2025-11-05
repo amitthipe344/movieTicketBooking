@@ -1,12 +1,15 @@
 package com.amit.crud.service;
 
 import com.amit.crud.dto.MovieSetupRequest;
+import com.amit.crud.dto.PromoCodeRequest;
 import com.amit.crud.entity.Movie;
+import com.amit.crud.entity.PromoCode;
 import com.amit.crud.entity.Seat;
 import com.amit.crud.entity.Show;
 import com.amit.crud.exception.BadRequestException;
 import com.amit.crud.exception.NotFoundException;
 import com.amit.crud.repository.MovieRepository;
+import com.amit.crud.repository.PromoCodeRepository;
 import com.amit.crud.repository.SeatRepository;
 import com.amit.crud.repository.ShowRepository;
 import jakarta.transaction.Transactional;
@@ -19,11 +22,13 @@ public class MovieService {
     private final MovieRepository movieRepository;
     private final ShowRepository showRepository;
     private final SeatRepository seatRepository;
+    private final PromoCodeRepository promoCodeRepository;
 
-    public MovieService(MovieRepository movieRepository, ShowRepository showRepository, SeatRepository seatRepository) {
+    public MovieService(MovieRepository movieRepository, ShowRepository showRepository, SeatRepository seatRepository,PromoCodeRepository promoCodeRepository) {
         this.movieRepository = movieRepository;
         this.showRepository = showRepository;
         this.seatRepository = seatRepository;
+        this.promoCodeRepository = promoCodeRepository;
     }
 
     @Transactional
@@ -111,6 +116,17 @@ public class MovieService {
             throw new NotFoundException("Movie not found with id: " + movieId);
         }
         return showRepository.findByMovieId(movieId);
+    }
+
+    public PromoCode addPromoCode(PromoCodeRequest promoCodeRequest) {
+        PromoCode promoCode = PromoCode.builder()
+                .code(promoCodeRequest.getCode())
+                .type(promoCodeRequest.getType())
+                .active(promoCodeRequest.isActive())
+                .expiryDate(promoCodeRequest.getExpiryDate())
+                .build();
+        return promoCodeRepository.save(promoCode);
+
     }
 }
 

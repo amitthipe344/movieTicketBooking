@@ -2,10 +2,12 @@ package com.amit.crud.controller;
 
 import com.amit.crud.dto.BookingRequest;
 import com.amit.crud.dto.BookingResponse;
+import com.amit.crud.dto.BookingResponseDTO;
 import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Movie;
 import com.amit.crud.entity.Show;
 import com.amit.crud.entity.User;
+import com.amit.crud.exception.NotFoundException;
 import com.amit.crud.repository.UserRepository;
 import com.amit.crud.service.BookingService;
 import com.amit.crud.service.MovieService;
@@ -54,9 +56,10 @@ public class CustomerController {
     }
 
     @GetMapping("/bookings")
-    public List<Booking> myBookings(Authentication auth) {
-        var username = auth.getName();
-        User user = userRepository.findByUsername(username).orElseThrow();
+    public List<BookingResponseDTO> myBookings(Authentication auth) {
+        String username = auth.getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found with username: " + username));
         return bookingService.getUserBookings(user.getId());
     }
 }

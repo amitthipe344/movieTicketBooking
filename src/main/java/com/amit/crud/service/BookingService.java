@@ -1,6 +1,7 @@
 package com.amit.crud.service;
 
 import com.amit.crud.dto.BookingRequest;
+import com.amit.crud.dto.BookingResponseDTO;
 import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Seat;
 import com.amit.crud.entity.Show;
@@ -122,14 +123,31 @@ public class BookingService {
         return saved;
     }
 
-    public List<Booking> getUserBookings(Long userId) {
+    public List<BookingResponseDTO> getUserBookings(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User not found with id: " + userId);
         }
-        return bookingRepository.findByUserId(userId);
+        List<Booking> bookings = bookingRepository.findByUserId(userId);
+        return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+    public List<BookingResponseDTO> getAllBookings() {
+        return bookingRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private BookingResponseDTO mapToResponse(Booking booking) {
+        return BookingResponseDTO.builder()
+                .bookingId(booking.getId())
+                .username(booking.getUser().getUsername())
+                .showId(booking.getShow().getId())
+                .seatNumbers(booking.getSeatNumbers())
+                .numberOfSeats(booking.getSeatNumbers().size())
+                .ticketPrice(booking.getShow().getPrice())
+                .totalPrice(booking.getTotalPrice())
+                .promoCodeApplied(booking.getPromoCodeApplied())
+                .createdAt(booking.getCreatedAt())
+                .build();
     }
 }

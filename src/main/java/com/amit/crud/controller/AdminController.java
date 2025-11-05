@@ -1,9 +1,12 @@
 package com.amit.crud.controller;
 
 
+import com.amit.crud.dto.BookingResponseDTO;
 import com.amit.crud.dto.MovieSetupRequest;
+import com.amit.crud.dto.PromoCodeRequest;
 import com.amit.crud.entity.Booking;
 import com.amit.crud.entity.Movie;
+import com.amit.crud.entity.PromoCode;
 import com.amit.crud.entity.Show;
 import com.amit.crud.service.MovieService;
 import com.amit.crud.service.BookingService;
@@ -56,9 +59,13 @@ public class AdminController {
     public void deleteShow(@PathVariable Long id) {
         movieService.deleteShow(id);
     }
+    @PostMapping("/promo-code")
+    public PromoCode addPromoCode(@RequestBody PromoCodeRequest promoCodeRequest){
+         return movieService.addPromoCode(promoCodeRequest);
+    }
 
     @GetMapping("/bookings")
-    public List<Booking> viewAllBookings() {
+    public List<BookingResponseDTO> viewAllBookings() {
         return bookingService.getAllBookings();
     }
 }
